@@ -1,0 +1,215 @@
+# define PY_SSIZE_T_CLEAN
+#include <stdio.h>
+#include <math.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <assert.h>
+#include <string.h>
+
+# include <Python.h>
+
+double Euc (double *p ,double *q , int d){
+    double sum = 0; 
+    int i;
+    for ( i=0 ; i< d ; i++){
+        sum+= (p[i] - q[i]) * (p[i] - q[i]); }
+    return sqrt(sum);}
+
+
+int sumvectors( double *p ,double *q ,int d){
+    int i;
+    for (i=0 ; i<d ; i++){
+        *(p + i) = (*(p + i) + *(q + i));}
+    return 0;}
+
+ 
+double *Kmeans(double *Kfirstpoints, double *points, int K, int iter, int m, int num, double eps){
+    double epsilon = eps;
+    int d = m;
+    int numofpoints = num;
+    double *p;
+    double *G;
+    double *H;
+    int *numInCluster; 
+    int it;
+    int boo;
+    int yy;
+    int w;
+    int r;
+    int o;
+    int i ;
+    int e;
+    int mm;
+    G = calloc(K*d, sizeof(double));  /*error###########*/
+    if (G == NULL){
+        printf("An Error Has Occurred");
+        exit(1);}
+
+    H = calloc(K*d, sizeof(double));  /*error###########*/
+    if (H == NULL){
+        printf("An Error Has Occurred");
+         exit(1);}
+
+    for (yy=0 ; yy<K ; yy++){
+        int ii;
+        for(ii = 0; ii < d;ii++){
+            H[ii + yy*d] = Kfirstpoints[ii + yy*d]; }}
+
+    it = 0;
+    boo= 0; 
+    
+    while((it < iter ) &  (!boo) ){
+        p = (double *)calloc(K*d, sizeof(double));   /*error###########*/
+        if (p == NULL){
+            printf("An Error Has Occurred");
+            exit (1);}
+        for( w = 0; w < K*d; w++){
+            p[w] = 0.0; }
+        numInCluster = (int *) calloc (K , sizeof(int));  /*error###########*/
+        if (numInCluster == NULL){
+            printf("An Error Has Occurred");
+            exit(1) ;}
+        for( mm = 0; mm < K; mm++){
+            numInCluster[mm] = 0; }
+
+        for( r=0; r <numofpoints ; r++){
+            double mindis;
+            int idmindis = 0; 
+            int c; 
+            mindis = Euc(points + r*d, H , d);  
+            for (c=0 ; c<K ;  c++){
+                double Eucdis = Euc(points + r*d,H + d*c, d);
+                if (Eucdis<= mindis){
+                    mindis = Eucdis;
+                    idmindis = c;   }}
+            
+            sumvectors(p + idmindis*d , points + r*d, d); 
+            numInCluster[idmindis]++;    }
+         
+        for (o=0 ; o<K ; o++){
+            int u; 
+            for ( u=0 ; u<d ; u++){
+                G[u + o*d] = H[u + o*d]; 
+                H[u + o*d] = p[u + o*d]; }}
+        
+        for (i=0; i< K ; i++){
+            int j;
+            for ( j=0 ; j<d ; j++){
+
+                H[j + i*d] = H[j + i*d] / numInCluster[i] ; }}
+
+        boo = 1;
+          
+        for ( e=0 ; e<K ; e++){
+            double DELTA= Euc( G + e*d , H + e*d , d ); 
+            if (DELTA>= epsilon){
+                boo = 0; }    }
+        
+        it++;
+        free(p);
+        free(numInCluster);
+    }
+    free(G);
+    return H;    
+}
+
+static PyObject* fit(PyObject *self, PyObject *args)
+{
+    PyObject *lst;
+    PyObject *item;
+    PyObject *firstKcntroids;
+    PyObject *itemn;
+    PyObject* python_val;
+    PyObject* python_float;
+    PyObject* val;
+    int itr;
+    double epsilon;
+    int num;
+    int K;
+    int m;
+    double *points;
+    int i;
+    int j;
+    double cor;
+    double *Kfirstpoints;
+    int l;
+    int k;
+    double *avgvec;
+    int h;
+    int s;
+    if (!PyArg_ParseTuple(args, "OOid", &lst, &firstKcntroids, &itr, &epsilon)) {
+        return NULL;
+    }
+    num = PyObject_Length(lst);
+    K = PyObject_Length(firstKcntroids);
+    item = PyList_GetItem(lst, 0);
+    m = PyObject_Length(item);
+    points = calloc(num*m, sizeof(double)); 
+    if (points == NULL){
+        printf("An Error Has Occurred");
+         exit(1);}
+    Kfirstpoints = calloc(K*m, sizeof(double));
+    if (Kfirstpoints == NULL){
+        printf("An Error Has Occurred");
+         exit(1);}     
+
+    for (l = 0; l < num; l++) {
+        item = PyList_GetItem(lst, l);
+        for (k = 0; k < m; k++) {
+            itemn = PyList_GetItem(item, k);
+            cor = PyFloat_AsDouble(itemn);
+            points[k + l*m] = cor;
+        }
+    }
+    for (i = 0; i < K; i++) {
+        item = PyList_GetItem(firstKcntroids, i);
+        for (j = 0; j < m; j++) {
+            itemn = PyList_GetItem(item, j);
+            cor = PyFloat_AsDouble(itemn);
+            Kfirstpoints[j + i*m] = cor;
+        }
+    }
+    avgvec = Kmeans(Kfirstpoints, points, K, itr, m, num, epsilon);
+    free(Kfirstpoints);
+    free(points);
+
+    python_val = PyList_New(K);
+    for (s = 0; s < K; ++s)
+    {
+        val = PyList_New(m);
+        for (h = 0; h < m; ++h){
+            python_float = Py_BuildValue("d", avgvec[h + m*s]);
+            PyList_SetItem(val, h, python_float);
+        }    
+        PyList_SetItem(python_val, s, val);
+    }
+    free(avgvec);
+    return python_val;
+}
+
+
+static PyMethodDef KmeansMethods[] = {
+    {"fit",                   
+      (PyCFunction) fit,
+      METH_VARARGS,           
+      PyDoc_STR("divide the points to their closest cluster")}, 
+    {NULL, NULL, 0, NULL}     
+};
+
+static struct PyModuleDef Kmeansmodule = {
+    PyModuleDef_HEAD_INIT,
+    "mykmeanssp", 
+    NULL, 
+    -1,  
+    KmeansMethods 
+};
+
+PyMODINIT_FUNC PyInit_mykmeanssp(void)
+{
+    PyObject *m;
+    m = PyModule_Create(&Kmeansmodule);
+    if (!m) {
+        return NULL;
+    }
+    return m;
+}

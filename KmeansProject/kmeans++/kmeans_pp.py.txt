@@ -1,0 +1,145 @@
+import math 
+import sys
+import pandas as pd
+import numpy as np
+
+import mykmeanssp as km
+
+
+
+def initCentros(allPoints, k):
+    vectors = allPoints
+    if len(vectors.shape) == 1:
+        n = 1
+        dim = vectors.shape[0]
+    else:
+        n, dim = vectors.shape
+
+    np.random.seed(0)  
+    first_index = int(np.random.choice(n))  
+    mu1 = vectors[first_index]  
+    centroids = np.zeros((k, dim))  
+    centroids[0] = mu1  
+    distances = np.zeros((k, n))  
+    for i in range(n):
+        tmp_arr = np.power((vectors[i] - centroids[0]), 2)
+        tmp_sum = 0
+        for u in range(len(tmp_arr)):
+            tmp_sum += tmp_arr[u]
+        distances[0][i] = math.sqrt(tmp_sum)  
+
+    returned_Indexes = np.zeros((k))  
+    returned_Indexes[0] = first_index  
+
+
+    z = 1
+
+    while z < k:  
+        d_i = np.min(distances[:z, ], axis=0)
+        probs = [0 for c in range(n)]
+        summ = d_i.sum()
+        for r in range(n):
+            probs[r] = d_i[r] / summ
+        rand_indx = np.random.choice(n, p=probs)
+        returned_Indexes[z] = rand_indx
+        centroids[z] = vectors[rand_indx]
+        for i in range(n):
+            tmp_arr = np.power((vectors[i] - centroids[z]), 2)
+            tmp_sum = 0
+            for u in range(len(tmp_arr)):
+                tmp_sum += tmp_arr[u]
+            distances[z][i] = math.sqrt(tmp_sum)
+        z += 1
+    
+    vectorsList = vectors.tolist()
+    centrosList = centroids.tolist()
+    indxArrList = returned_Indexes.tolist()
+    intindexes = []  
+    for index in indxArrList:  
+        intindexes.append(int(index))
+    result =[]
+    result.append(vectorsList)
+    result.append(centrosList)
+    result.append(indxArrList)
+    return result  
+
+try: 
+    n = len(sys.argv)
+    K = float(sys.argv[1])
+    epsilon= float(sys.argv[n-3])
+    path_1 = sys.argv[n-2]
+    path_2 = sys.argv[n-1]
+    if n == 6:
+        iter = float(sys.argv[2])
+    else:
+        iter = 300   
+
+    file1 = pd.read_csv(path_1, header=None)
+    file2 = pd.read_csv(path_2, header=None)
+    finalinput = pd.merge(file1, file2, on=[0],how='inner') 
+    finalinput.sort_values(by=[0], inplace=True)  
+    finalinput_droped = finalinput.drop(columns=0)
+    vectors = finalinput_droped.to_numpy(copy=True)
+    if len(vectors.shape) == 1:
+        numofpoints = 1
+        dim = vectors.shape[0]
+    else:
+        numofpoints, dim = vectors.shape
+
+except:
+    print("An Error Has Occurred")
+    sys.exit()
+
+### invalid iter or K
+if K>= numofpoints or K<=1 or ( not float(K).is_integer()):
+        print("Invalid number of clusters!")
+        sys.exit()
+    
+if  iter <=1 or iter >=1000 or (not float(iter).is_integer()):
+        print('Invalid maximum iteration!')
+        sys.exit()
+
+
+K=int(K)
+iter=int(iter)
+resArr = initCentros(vectors,K)
+vectorslist = resArr[0]
+centroidslist = resArr[1]
+index_arrlist = resArr[2]
+index_list=[]   ##############the final
+
+for i in (index_arrlist):
+    ind= finalinput.iloc[int(i),0]
+    index_list.append(ind)
+
+
+
+
+######### calling c module 
+finalCentroids = km.fit(vectorslist, centroidslist, iter, epsilon) 
+
+
+if (len(finalCentroids) ==0) :
+    print("An Error Has Occurred")
+    sys.exit()
+
+##%0.4 for print
+PrintCentroids=[[0 for i in range(dim)] for j in range(K)]
+for i in range(K):
+    for j in range(dim):
+        PrintCentroids[i][j] = str("%.4f" % finalCentroids[i][j])
+
+
+##print
+for i in range(len(index_list)):
+    if i != (len(index_list)) - 1:
+        print(str(int(index_list[i])) + ",", end='')
+    else:
+        print(str(int(index_list[i])))
+
+for i in range(K):  
+    for j in range(dim):
+        if j != dim - 1:
+            print(PrintCentroids[i][j] + ",", end='')
+        else:
+            print(PrintCentroids[i][j])

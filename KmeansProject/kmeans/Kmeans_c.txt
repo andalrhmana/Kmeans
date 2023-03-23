@@ -1,0 +1,228 @@
+#include <stdio.h>
+#include <math.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <assert.h>
+#include <string.h>
+
+
+struct linked_list
+{
+double h;
+struct linked_list *next;
+};
+typedef struct linked_list ELEMENT;
+typedef ELEMENT* LINK;
+
+
+void delete_list( LINK head ){
+    if ( head != NULL ){   
+        delete_list( head->next);
+        free( head );
+    }
+}
+
+
+
+double Euc (double *p ,double *q , int d){
+    double sum = 0; 
+    int i;
+    for ( i=0 ; i< d ; i++){
+        sum+= (p[i] - q[i]) * (p[i] - q[i]); 
+
+    }
+    return sqrt(sum);
+}
+
+int sumvectors( double *p ,double *q ,int d){
+    int i;
+    for (i=0 ; i<d ; i++){
+        *(p + i) = (*(p + i) + *(q + i));
+
+     
+    }
+    return 0;
+}
+
+
+ 
+ 
+double *Kmeans(double *points, int K, int iter, int m){
+    double epsilon = 0.001;
+    int d = m;
+    int numofpoints = sizeof(points)/sizeof(points[0]);
+    double *p;
+    double *G;
+    double *H;
+    int *numInCluster; 
+    int it;
+    int boo;
+    int yy;
+    int w;
+    int r;
+    int o;
+    int i ;
+    int e;
+    int mm;
+    numofpoints = numofpoints/d;
+    G = calloc(K*d, sizeof(double));
+    H = calloc(K*d, sizeof(double));
+    for (yy=0 ; yy<K ; yy++){
+        int ii;
+        for(ii = 0; ii < d;ii++){
+            H[ii + yy*d] = points[ii + yy*d]; 
+        }
+    }
+
+
+    it = 0;
+    boo= 0; 
+    
+    while((it < iter ) &  (!boo) ){
+
+        p = (double *)calloc(K*d, sizeof(double));
+        
+        for( w = 0; w < K*d; w++){
+            p[w] = 0.0; }
+        numInCluster = (int *) calloc (K , sizeof(int)); 
+        for( mm = 0; mm < K; mm++){
+            numInCluster[mm] = 0; }
+
+        printf("jjj");
+
+         
+        for( r=0; r <numofpoints ; r++){
+            double mindis = Euc(points + r*d, H , d); 
+            int idmindis = 0; 
+            int c; 
+            for (c=0 ; c<K ;  c++){
+                double Eucdis = Euc(points + r*d,H + d*c, d);
+                if (Eucdis<= mindis){
+                    mindis = Eucdis;
+                    idmindis = c;         
+                }
+            }
+            sumvectors(p + idmindis*d , points + r*d, d); 
+            numInCluster[idmindis]++; 
+        }
+         
+        for (o=0 ; o<K ; o++){
+            int u; 
+            for ( u=0 ; u<d ; u++){
+                G[u + o*d] = H[u + o*d]; 
+                H[u + o*d] = p[u + o*d];
+            }
+        }
+        
+        for (i=0; i< K ; i++){
+            int j;
+            for ( j=0 ; j<d ; j++){
+
+                H[j + i*d] = H[j + i*d] / numInCluster[i] ; 
+            }
+        }
+        boo = 1;
+          
+        for ( e=0 ; e<K ; e++){
+            double DELTA= Euc( G + e*d , H + e*d , d ); 
+            if (DELTA>= epsilon){
+                boo = 0; 
+            }
+        }
+        it++;
+        free(p);
+        free(numInCluster);
+    }
+    free(G);
+    return H;    
+}
+
+
+
+int main(int argc,char **argv){
+    double x;
+    char c;
+    int first = 0;
+    int d = 0;
+    int m = 0;
+    int K;
+    int itr;
+    int num = 0;
+    LINK head = NULL, tail = NULL;
+
+    double *p;
+    int i = 0;
+    int gg;
+    double *avgvec;
+
+    if(argc < 3){
+        K = atoi(argv[1]);
+        itr = 200;
+    }
+    else{
+        K = atoi(argv[1]);
+        itr = atoi(argv[2]);
+    }
+    assert(K>0);
+    assert(itr>0);
+    if(stdin == NULL){
+        printf("File not found");
+        return 0;
+    }
+    while(scanf("%lf%c",&x,&c) == 2){
+        if(first == 0){
+            head = (ELEMENT* )malloc( sizeof( ELEMENT ) );
+            assert(head != NULL);
+            head -> h = x;
+            tail = head;
+            first = 1;
+            d++;
+            num++;
+        }
+        else{
+            tail->next = (ELEMENT* )malloc( sizeof( ELEMENT ) );
+            tail = tail->next;
+            assert(tail != NULL);
+            tail->h = x;
+            tail->next = NULL;
+            d++;
+            num++;
+        }
+        if(c == '\n'){
+            m = d;
+            d = 0;
+        }
+        
+    }
+    tail->next = (ELEMENT* )malloc( sizeof( ELEMENT ) );
+    tail = tail->next;
+    assert(tail != NULL);
+    tail->h = x;
+    tail->next = NULL;
+    d++;
+    num++;
+
+    tail = head;
+    p = calloc(num, sizeof(double));
+    while(tail != NULL){
+        p[i] = tail->h;
+        tail = tail->next;
+        i++;
+    }
+    delete_list(head);
+     
+    avgvec = Kmeans(p, K, itr, m);
+    free(p);
+     
+     
+    for( gg = 0; gg < K; gg++){
+        int k;
+        printf("%.4f",avgvec[gg*m]);
+        for(k = 1;k < m;k++){
+            printf(",%.4f",avgvec[gg*m + k]);
+        }
+    }
+    free(avgvec);
+
+    return 0;
+}

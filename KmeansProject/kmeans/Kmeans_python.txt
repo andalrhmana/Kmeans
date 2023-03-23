@@ -1,0 +1,96 @@
+import math 
+import sys
+import pdb
+
+def Kmeans(points, K, iter, epsilon):
+    d = len(points[0])
+    numofpoints=len(points)
+    numofpoiincluster = [1 for i in range(K)]
+    avgvec = points[:K]
+    places = [i+1 for i in range(K)] + [0 for i in range (numofpoints - K)]
+    euctrue = [False for i in range(K)]
+    it= 0
+    print('num of point', numofpoints)
+    while it < iter:
+        print(avgvec[0])
+        print(avgvec[1])
+        print(avgvec[2])
+        print(numofpoiincluster)
+        for j in range(numofpoints):
+            mindis = Euc(points[j], avgvec[0], d)
+            idmindis = 0
+            for i in range(K):
+                Eucdis = Euc(points[j], avgvec[i], d)
+                if Eucdis < mindis:
+                    mindis = Eucdis
+                    idmindis = i
+            oldplace = places[j] - 1
+            newplace = idmindis
+            if oldplace != newplace:
+                oldvector = avgvec[newplace]
+                places[j] = newplace
+                avgvec[newplace] = [i * numofpoiincluster[newplace] for i in avgvec[newplace]]
+                numofpoiincluster[newplace] += 1
+                print(numofpoiincluster)
+                avgvec[newplace] = sumvectors(avgvec[newplace], points[j], True)
+                avgvec[newplace] = [i / numofpoiincluster[newplace] for i in avgvec[newplace]]
+                if Euc(avgvec[newplace], oldvector, d) < epsilon:
+                    euctrue[newplace] = True
+                else:
+                    euctrue[newplace] = False  
+                if oldplace != -1:
+                    oldvectorforoldplace = avgvec[oldplace]
+                    avgvec[oldplace] = [i * numofpoiincluster[oldplace] for i in avgvec[oldplace]]
+                    numofpoiincluster[oldplace] -= 1
+                    avgvec[oldplace] = sumvectors(avgvec[oldplace], points[j], False)
+                    print(numofpoiincluster)
+                    avgvec[oldplace] = [i / numofpoiincluster[oldplace] for i in avgvec[oldplace]]
+                    if Euc(avgvec[oldplace], oldvectorforoldplace, d) < epsilon:
+                        euctrue[oldplace] = True
+                    else:
+                      euctrue[oldplace] = False 
+        it+=1
+        epstrue=True
+        for boo in euctrue:
+            if boo == False:
+                epstrue = False
+                break 
+
+        if epstrue==True:
+            break
+
+    return avgvec
+
+def Euc (p, q, d):
+    sum = 0
+    for i in range(d):
+        sum += (p[i]-q[i])**2
+    return math.sqrt(sum)
+
+
+def sumvectors(p, q, boo):
+    sumvector = []
+    for i in range(len(p)):
+        if (boo):
+            sumvector += [p[i] + q[i]]
+        else:
+             sumvector += [p[i] - q[i]]  
+    return sumvector
+           
+n = len(sys.argv)
+K = int(sys.argv[1])
+path = sys.argv[n-1]
+file = open(path, "r")
+m = []
+for line in file:
+    m += [[float(i) for i in line.split(",")]]
+if n == 4:
+    iter = int(sys.argv[2])
+else:
+    iter = 200 
+    
+print("hi")
+
+l = Kmeans(m, K, iter, 0.001)
+for i in l:
+    print(i)           
